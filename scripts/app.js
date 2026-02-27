@@ -72,46 +72,23 @@ async function withLoading(fn, loadingMsg = '') {
 /* =========================================
    AUTH
    ========================================= */
+/* Sem tela de login – acesso direto */
 async function initAuth() {
-    const form = el('login-form');
-    const toggle = el('toggle-password');
-    const pwdInput = el('login-password');
+    // Esconde tela de login e mostra app diretamente
+    const loginScreen = el('login-screen');
+    const appEl = el('app');
+    if (loginScreen) loginScreen.classList.add('hidden');
+    if (appEl) appEl.classList.remove('hidden');
 
-    toggle.addEventListener('click', () => {
-        pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
-    });
+    // Botão de logout apenas recarrega a página
+    const logoutBtn = el('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+    }
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = el('login-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<span>Verificando...</span>';
-
-        try {
-            const settings = await DB.settings.get();
-            if (pwdInput.value === settings.password) {
-                el('login-screen').classList.add('hidden');
-                el('app').classList.remove('hidden');
-                await initApp();
-            } else {
-                el('login-error').classList.remove('hidden');
-                pwdInput.value = '';
-                pwdInput.focus();
-            }
-        } catch (err) {
-            showToast('❌ Erro ao conectar com o banco de dados: ' + err.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<span>Entrar no sistema</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-        }
-    });
-
-    el('logout-btn').addEventListener('click', () => {
-        el('app').classList.add('hidden');
-        el('login-screen').classList.remove('hidden');
-        pwdInput.value = '';
-        el('login-error').classList.add('hidden');
-    });
+    await initApp();
 }
 
 /* =========================================
@@ -702,81 +679,72 @@ async function refreshSettings() {
 }
 
 function initSettings() {
-    el('btn-save-goal').addEventListener('click', async () => {
-        await withLoading(async () => {
-            const settings = await DB.settings.get();
-            settings.goal = parseFloat(el('settings-goal').value) || 100000;
-            await DB.settings.save(settings);
-            showToast('✅ Meta salva no Supabase!');
-        });
-    });
-
-    el('btn-change-pwd').addEventListener('click', async () => {
-        const settings = await DB.settings.get();
-        const oldPwd = el('settings-old-pwd').value;
-        const newPwd = el('settings-new-pwd').value;
-        const confirmPwd = el('settings-confirm-pwd').value;
-        const msgEl = el('settings-pwd-msg');
-        msgEl.classList.remove('hidden', 'success', 'error');
-
-        if (oldPwd !== settings.password) { msgEl.textContent = '❌ Senha atual incorreta.'; msgEl.classList.add('error'); }
-        else if (newPwd.length < 4) { msgEl.textContent = '❌ Nova senha deve ter ao menos 4 caracteres.'; msgEl.classList.add('error'); }
-        else if (newPwd !== confirmPwd) { msgEl.textContent = '❌ As senhas não conferem.'; msgEl.classList.add('error'); }
-        else {
-            settings.password = newPwd;
-            await DB.settings.save(settings);
-            msgEl.textContent = '✅ Senha alterada com sucesso!';
-            msgEl.classList.add('success');
-            ['settings-old-pwd', 'settings-new-pwd', 'settings-confirm-pwd'].forEach(id => el(id).value = '');
-        }
-        msgEl.classList.remove('hidden');
-        setTimeout(() => msgEl.classList.add('hidden'), 3000);
-    });
-
-    el('btn-export-backup').addEventListener('click', async () => {
-        await withLoading(async () => {
-            const data = JSON.stringify(await DB.exportAll(), null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `cod_backup_${new Date().toISOString().slice(0, 10)}.json`;
-            a.click(); URL.revokeObjectURL(url);
-            showToast('💾 Backup exportado do Supabase!');
-        });
-    });
-
-    el('btn-import-backup').addEventListener('click', () => el('backup-file-input').click());
-
-    el('backup-file-input').addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                const data = JSON.parse(ev.target.result);
-                showConfirm('Importar Backup', 'Isso substituirá TODOS os dados atuais no Supabase. Continuar?', async () => {
-                    await withLoading(async () => {
-                        await DB.importAll(data);
-                        showToast('✅ Backup importado para o Supabase!');
-                        await navigate(currentTab);
-                    });
-                });
-            } catch { showToast('❌ Arquivo inválido.'); }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    });
-
-    el('btn-clear-data').addEventListener('click', () => {
-        showConfirm('⚠️ Apagar Todos os Dados', 'Todos os dados no Supabase serão apagados permanentemente!', async () => {
+    const saveGoalBtn = el('btn-save-goal');
+    if (saveGoalBtn) {
+        saveGoalBtn.addEventListener('click', async () => {
             await withLoading(async () => {
-                await supabaseClient.from('ads').delete().not('id', 'is', null);
-                await supabaseClient.from('sales').delete().not('id', 'is', null);
-                showToast('🗑️ Dados apagados do Supabase.');
-                await navigate(currentTab);
+                const settings = await DB.settings.get();
+                settings.goal = parseFloat(el('settings-goal').value) || 100000;
+                await DB.settings.save(settings);
+                showToast('✅ Meta salva no Supabase!');
             });
         });
-    });
+    }
+
+    const exportBackupBtn = el('btn-export-backup');
+    if (exportBackupBtn) {
+        exportBackupBtn.addEventListener('click', async () => {
+            await withLoading(async () => {
+                const data = JSON.stringify(await DB.exportAll(), null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `cod_backup_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click(); URL.revokeObjectURL(url);
+                showToast('💾 Backup exportado do Supabase!');
+            });
+        });
+    }
+
+    const importBackupBtn = el('btn-import-backup');
+    if (importBackupBtn) importBackupBtn.addEventListener('click', () => el('backup-file-input').click());
+
+    const backupFileInput = el('backup-file-input');
+    if (backupFileInput) {
+        backupFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    showConfirm('Importar Backup', 'Isso substituirá TODOS os dados atuais no Supabase. Continuar?', async () => {
+                        await withLoading(async () => {
+                            await DB.importAll(data);
+                            showToast('✅ Backup importado para o Supabase!');
+                            await navigate(currentTab);
+                        });
+                    });
+                } catch { showToast('❌ Arquivo inválido.'); }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
+    }
+
+    const clearDataBtn = el('btn-clear-data');
+    if (clearDataBtn) {
+        clearDataBtn.addEventListener('click', () => {
+            showConfirm('⚠️ Apagar Todos os Dados', 'Todos os dados no Supabase serão apagados permanentemente!', async () => {
+                await withLoading(async () => {
+                    await supabaseClient.from('ads').delete().not('id', 'is', null);
+                    await supabaseClient.from('sales').delete().not('id', 'is', null);
+                    showToast('🗑️ Dados apagados do Supabase.');
+                    await navigate(currentTab);
+                });
+            });
+        });
+    }
 }
 
 /* =========================================
@@ -795,5 +763,10 @@ async function initApp() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await initAuth();
+    try {
+        await initAuth();
+    } catch (err) {
+        console.error('Erro ao inicializar:', err);
+        showToast('❌ Erro ao conectar com o banco de dados: ' + err.message);
+    }
 });

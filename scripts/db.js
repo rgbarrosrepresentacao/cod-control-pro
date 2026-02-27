@@ -1,6 +1,6 @@
 /**
  * COD Control Pro – Database Layer (Supabase)
- * Migrated from LocalStorage to Supabase cloud database
+ * Usa supabaseClient (definido em supabase-config.js)
  */
 
 const DB = (() => {
@@ -22,7 +22,7 @@ const DB = (() => {
   // ================================================================
   const ads = {
     async getAll() {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('ads')
         .select('*')
         .order('date', { ascending: false });
@@ -31,7 +31,7 @@ const DB = (() => {
     },
 
     async add(ad) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('ads')
         .insert([{
           date: ad.date,
@@ -47,7 +47,7 @@ const DB = (() => {
     },
 
     async update(id, ad) {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('ads')
         .update({
           date: ad.date,
@@ -61,7 +61,7 @@ const DB = (() => {
     },
 
     async delete(id) {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('ads')
         .delete()
         .eq('id', id);
@@ -74,7 +74,7 @@ const DB = (() => {
   // ================================================================
   const sales = {
     async getAll() {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('sales')
         .select('*')
         .order('date', { ascending: false });
@@ -83,7 +83,7 @@ const DB = (() => {
     },
 
     async add(sale) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseClient
         .from('sales')
         .insert([{
           date: sale.date,
@@ -104,7 +104,7 @@ const DB = (() => {
     },
 
     async update(id, sale) {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('sales')
         .update({
           date: sale.date,
@@ -119,12 +119,11 @@ const DB = (() => {
           obs: sale.obs || null,
         })
         .eq('id', sale.id || id);
-      // also update by numeric id column if uuid not working
       if (error) handleError(error, 'atualizar venda');
     },
 
     async delete(id) {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('sales')
         .delete()
         .eq('id', id);
@@ -137,27 +136,27 @@ const DB = (() => {
   // ================================================================
   const settings = {
     async get() {
-      // Try Supabase first
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .eq('id', 1)
-        .maybeSingle();
-      if (error || !data) {
-        // Fallback to localStorage
-        const local = localStorage.getItem('cod_settings');
-        return local ? JSON.parse(local) : { goal: 100000, password: 'cod2024' };
+      try {
+        const { data, error } = await supabaseClient
+          .from('settings')
+          .select('*')
+          .eq('id', 1)
+          .maybeSingle();
+        if (error || !data) {
+          return { goal: 100000 };
+        }
+        return { goal: Number(data.goal) || 100000 };
+      } catch (e) {
+        console.warn('[Settings] Falha ao buscar, usando padrão:', e.message);
+        return { goal: 100000 };
       }
-      return { goal: Number(data.goal) || 100000, password: data.password || 'cod2024' };
     },
 
     async save(s) {
-      // Save to both Supabase and localStorage as backup
-      localStorage.setItem('cod_settings', JSON.stringify(s));
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('settings')
-        .upsert([{ id: 1, goal: s.goal, password: s.password }]);
-      if (error) console.warn('[Settings] Supabase save failed, using localStorage only:', error.message);
+        .upsert([{ id: 1, goal: s.goal }]);
+      if (error) console.warn('[Settings] Supabase save failed:', error.message);
     },
   };
 
@@ -180,7 +179,6 @@ const DB = (() => {
 
   async function importAll(data) {
     if (data.ads && data.ads.length > 0) {
-      // Delete existing and re-insert
       await supabaseClient.from('ads').delete().not('id', 'is', null);
       const cleanAds = data.ads.map(a => ({
         date: a.date, platform: a.platform, value: Number(a.value) || 0,
