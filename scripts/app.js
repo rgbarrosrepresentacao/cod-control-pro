@@ -46,11 +46,9 @@ function calcSaleProfit(sale) {
     const cost = Number(sale.cost) || 0;
     const shipping = Number(sale.shipping) || 0;
     const fee = Number(sale.fee) || 0;
-    const commission = Number(sale.commission) || 0;
-    // COD model: commission is a COST (platform fee paid to Logzz), not income
-    // Lucro = Bruto - Custo - Frete - Taxa - Comissão
+    // Lucro Líquido = Valor Bruto − Custo do Produto − Frete − Taxa
     if (sale.status === 'Cancelado') return -cost;
-    return gross - cost - shipping - fee - commission;
+    return gross - cost - shipping - fee;
 }
 
 function statusBadge(status) {
@@ -188,9 +186,8 @@ async function refreshDashboard() {
         const totalFees = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.fee || 0), 0);
         const totalShipping = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.shipping || 0), 0);
         const totalCost = sales.reduce((s, x) => s + Number(x.cost || 0), 0);
-        const totalCommission = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.commission || 0), 0);
-        const netRev = grossRev - totalFees - totalShipping - totalCommission;
-        // Lucro = Bruto - Frete - Taxa - Comissão - Custo Produto - Investimento Anúncios
+        const netRev = grossRev - totalFees - totalShipping;
+        // Lucro Líquido = Bruto − Custo − Frete − Taxa − Anúncios
         const profit = netRev - totalCost - totalAds;
         const roas = totalAds > 0 ? (grossRev / totalAds) : 0;
         const cpv = deliveredSales.length > 0 ? (totalAds / deliveredSales.length) : 0;
@@ -389,19 +386,18 @@ async function refreshSalesModule() {
         const statusFilter = el('sales-filter-status').value;
         const search = el('sales-search').value;
 
-        const delivered = sales.filter(s => s.status === 'Entregue');
         const cancelled = sales.filter(s => s.status === 'Cancelado');
         const nonCancelled = sales.filter(s => s.status !== 'Cancelado');
 
         const grossTotal = nonCancelled.reduce((s, x) => s + Number(x.gross || 0), 0);
-        // Total de custos (comissão é custo da plataforma COD)
         const totalCustos = nonCancelled.reduce((s, x) =>
-            s + Number(x.cost || 0) + Number(x.shipping || 0) + Number(x.fee || 0) + Number(x.commission || 0), 0);
+            s + Number(x.cost || 0) + Number(x.shipping || 0) + Number(x.fee || 0), 0);
+        const lucroTotal = sales.reduce((s, x) => s + (calcSaleProfit(x) || 0), 0);
 
         el('sales-gross').textContent = fmt(grossTotal);
-        el('sales-net').textContent = fmt(totalCustos); // Agora mostra total de custos
-        el('sales-commission').textContent = fmt(nonCancelled.reduce((s, x) => s + Number(x.commission || 0), 0));
-        el('sales-profit').textContent = fmt(sales.reduce((s, x) => s + (calcSaleProfit(x) || 0), 0));
+        el('sales-net').textContent = fmt(totalCustos);
+        el('sales-profit').textContent = fmt(lucroTotal);
+        el('sales-profit').style.color = lucroTotal >= 0 ? 'var(--green)' : 'var(--red)';
         el('sales-cancelled').textContent = fmt(cancelled.reduce((s, x) => s + Number(x.gross || 0), 0));
 
         renderSalesTable(sales, search, statusFilter);
@@ -416,17 +412,17 @@ function renderSalesTable(sales, search = '', statusFilter = '') {
     const sorted = [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     if (sorted.length === 0) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">Nenhuma venda encontrada. Clique em "Registrar Venda" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="9">Nenhuma venda encontrada. Clique em "Registrar Venda" para começar.</td></tr>`;
         return;
     }
     tbody.innerHTML = sorted.map(s => {
         const profit = calcSaleProfit(s);
+        const profitColor = profit >= 0 ? 'var(--green)' : 'var(--red)';
         return `
     <tr>
       <td>${s.date}</td>
       <td>${s.product}</td>
       <td>${fmt(s.gross)}</td>
-      <td>${fmt(s.commission || 0)}</td>
       <td>${statusBadge(s.status)}</td>
       <td>${fmt(s.cost || 0)}</td>
       <td>${fmt(s.shipping || 0)}</td>
@@ -454,7 +450,7 @@ function initSalesModule() {
         openModal('modal-sale');
     });
 
-    ['sale-gross', 'sale-commission', 'sale-cost', 'sale-shipping', 'sale-fee', 'sale-status'].forEach(id => {
+    ['sale-gross', 'sale-cost', 'sale-shipping', 'sale-fee', 'sale-status'].forEach(id => {
         el(id)?.addEventListener('input', updateSaleProfitPreview);
         el(id)?.addEventListener('change', updateSaleProfitPreview);
     });
@@ -468,7 +464,7 @@ function initSalesModule() {
             product: el('sale-product').value.trim(),
             status: el('sale-status').value,
             gross: parseFloat(el('sale-gross').value) || 0,
-            commission: parseFloat(el('sale-commission').value) || 0,
+            commission: 0,
             cost: parseFloat(el('sale-cost').value) || 0,
             shipping: parseFloat(el('sale-shipping').value) || 0,
             fee: parseFloat(el('sale-fee').value) || 0,
@@ -495,20 +491,19 @@ function initSalesModule() {
 
 function updateSaleProfitPreview() {
     const gross = parseFloat(el('sale-gross').value) || 0;
-    const commission = parseFloat(el('sale-commission').value) || 0;
     const cost = parseFloat(el('sale-cost').value) || 0;
     const shipping = parseFloat(el('sale-shipping').value) || 0;
     const fee = parseFloat(el('sale-fee').value) || 0;
     const status = el('sale-status').value;
 
-    const data = { gross, commission, cost, shipping, fee, status };
+    const data = { gross, cost, shipping, fee, status };
     const profit = calcSaleProfit(data);
-    const totalCosts = cost + shipping + fee + commission;
+    const totalCosts = cost + shipping + fee;
 
     el('sale-profit-preview').value = fmt(profit);
     el('sale-profit-preview').style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
 
-    // Breakdown detalhado abaixo do campo
+    // Breakdown detalhado
     const breakdown = el('sale-profit-breakdown');
     if (breakdown) {
         if (status === 'Cancelado') {
@@ -516,10 +511,11 @@ function updateSaleProfitPreview() {
             breakdown.style.color = 'var(--red)';
         } else {
             breakdown.innerHTML =
-                `Bruto <strong>${fmt(gross)}</strong> ` +
-                `− Custos <strong style="color:var(--red)">${fmt(totalCosts)}</strong> ` +
-                `(comissão ${fmt(commission)} + produto ${fmt(cost)} + frete ${fmt(shipping)} + taxa ${fmt(fee)})`;
-            breakdown.style.color = '';
+                `${fmt(gross)} − ${fmt(totalCosts)} = ` +
+                `<strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'}">` +
+                `${fmt(profit)}</strong> ` +
+                `<span style="opacity:.7">(custo ${fmt(cost)} + frete ${fmt(shipping)} + taxa ${fmt(fee)})</span>`;
+            breakdown.style.color = 'var(--text-muted)';
         }
     }
 }
@@ -535,7 +531,6 @@ window.editSale = async (id) => {
     el('sale-product').value = s.product;
     el('sale-status').value = s.status;
     el('sale-gross').value = s.gross;
-    el('sale-commission').value = s.commission || 0;
     el('sale-cost').value = s.cost || 0;
     el('sale-shipping').value = s.shipping || 0;
     el('sale-fee').value = s.fee || 0;
@@ -581,14 +576,15 @@ async function applyReportFilters() {
         const cancelled = sales.filter(s => s.status === 'Cancelado');
         const nonCancelled = sales.filter(s => s.status !== 'Cancelado');
         const grossRev = nonCancelled.reduce((s, x) => s + Number(x.gross || 0), 0);
-        // Faturamento líquido = Bruto - Taxa - Frete - Comissão (todos são custos no modelo COD)
-        const totalComission = nonCancelled.reduce((s, x) => s + Number(x.commission || 0), 0);
+        // Custos diretos de venda (sem comissão)
         const totalFeeRep = nonCancelled.reduce((s, x) => s + Number(x.fee || 0), 0);
         const totalShipRep = nonCancelled.reduce((s, x) => s + Number(x.shipping || 0), 0);
-        const netRev = grossRev - totalFeeRep - totalShipRep - totalComission;
+        const totalCostRep = sales.reduce((s, x) => s + Number(x.cost || 0), 0);
+        const totalCustos = totalFeeRep + totalShipRep + totalCostRep;
+        const netRev = grossRev - totalFeeRep - totalShipRep;
         const totalAds = ads.reduce((s, a) => s + Number(a.value || 0), 0);
-        // Lucro = Bruto - Custo Produto - Frete - Taxa - Comissão - Anúncios
-        const profit = netRev - sales.reduce((s, x) => s + Number(x.cost || 0), 0) - totalAds;
+        // Lucro Líquido = Bruto − Custo − Frete − Taxa − Anúncios
+        const profit = netRev - totalCostRep - totalAds;
         const roas = totalAds > 0 ? grossRev / totalAds : 0;
         const cancelRate = sales.length > 0 ? cancelled.length / sales.length * 100 : 0;
 
@@ -598,9 +594,9 @@ async function applyReportFilters() {
             'Pedidos Cancelados': cancelled.length,
             'Taxa de Cancelamento': `${fmtN(cancelRate, 1)}%`,
             'Faturamento Bruto': fmt(grossRev),
-            'Total de Custos': fmt(totalFeeRep + totalShipRep + totalComission),
+            'Total de Custos (Custo+Frete+Taxa)': fmt(totalCustos),
             'Total em Anúncios': fmt(totalAds),
-            'Lucro Líquido': fmt(profit),
+            '💰 Lucro Líquido': fmt(profit),
             'ROAS': `${fmtN(roas)}x`,
         };
 
