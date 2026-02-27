@@ -181,22 +181,22 @@ const DB = (() => {
   async function importAll(data) {
     if (data.ads && data.ads.length > 0) {
       // Delete existing and re-insert
-      await supabase.from('ads').delete().not('id', 'is', null);
+      await supabaseClient.from('ads').delete().not('id', 'is', null);
       const cleanAds = data.ads.map(a => ({
         date: a.date, platform: a.platform, value: Number(a.value) || 0,
         campaign: a.campaign || null, obs: a.obs || null,
       }));
-      await supabase.from('ads').insert(cleanAds);
+      await supabaseClient.from('ads').insert(cleanAds);
     }
     if (data.sales && data.sales.length > 0) {
-      await supabase.from('sales').delete().not('id', 'is', null);
+      await supabaseClient.from('sales').delete().not('id', 'is', null);
       const cleanSales = data.sales.map(s => ({
         date: s.date, product: s.product, status: s.status,
         gross: Number(s.gross) || 0, commission: Number(s.commission) || 0,
         cost: Number(s.cost) || 0, shipping: Number(s.shipping) || 0,
         fee: Number(s.fee) || 0, profit: Number(s.profit) || 0, obs: s.obs || null,
       }));
-      await supabase.from('sales').insert(cleanSales);
+      await supabaseClient.from('sales').insert(cleanSales);
     }
     if (data.settings) await settings.save(data.settings);
   }

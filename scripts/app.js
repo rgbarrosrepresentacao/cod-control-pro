@@ -770,8 +770,8 @@ function initSettings() {
     el('btn-clear-data').addEventListener('click', () => {
         showConfirm('⚠️ Apagar Todos os Dados', 'Todos os dados no Supabase serão apagados permanentemente!', async () => {
             await withLoading(async () => {
-                await supabase.from('ads').delete().not('id', 'is', null);
-                await supabase.from('sales').delete().not('id', 'is', null);
+                await supabaseClient.from('ads').delete().not('id', 'is', null);
+                await supabaseClient.from('sales').delete().not('id', 'is', null);
                 showToast('🗑️ Dados apagados do Supabase.');
                 await navigate(currentTab);
             });
