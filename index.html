@@ -524,7 +524,7 @@
                                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                                     <polyline points="17 6 23 6 23 12" />
                                 </svg></div>
-                            <div class="kpi-data"><span class="kpi-label">Receita Líquida</span><span id="sales-net"
+                            <div class="kpi-data"><span class="kpi-label">Total de Custos</span><span id="sales-net"
                                     class="kpi-value">R$ 0,00</span></div>
                         </div>
                         <div class="kpi-card" data-color="cyan">
@@ -533,7 +533,7 @@
                                     <path
                                         d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
                                 </svg></div>
-                            <div class="kpi-data"><span class="kpi-label">Total Comissões</span><span
+                            <div class="kpi-data"><span class="kpi-label">Total Comissões (Custo)</span><span
                                     id="sales-commission" class="kpi-value">R$ 0,00</span></div>
                         </div>
                         <div class="kpi-card" data-color="emerald">
@@ -996,7 +996,7 @@
                             required />
                     </div>
                     <div class="form-group">
-                        <label>Comissão Recebida (R$)</label>
+                        <label>Comissão da Plataforma (Custo) (R$)</label>
                         <input type="number" id="sale-commission" class="form-input" placeholder="0,00" min="0"
                             step="0.01" value="0" />
                     </div>
@@ -1016,9 +1016,11 @@
                             value="0" />
                     </div>
                     <div class="form-group">
-                        <label>Lucro Calculado</label>
-                        <input type="text" id="sale-profit-preview" class="form-input" readonly
-                            placeholder="Automático" />
+                        <label>📊 Lucro Calculado</label>
+                        <input type="text" id="sale-profit-preview" class="form-input" readonly placeholder="Automático"
+                            style="font-weight:700;font-size:1.05rem;" />
+                        <small id="sale-profit-breakdown"
+                            style="color:var(--text-muted);font-size:0.72rem;margin-top:4px;display:block;"></small>
                     </div>
                 </div>
                 <div class="form-group">
