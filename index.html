@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>COD Control Pro – Gestão Inteligente de Operação COD</title>
+    <meta name="description"
+        content="Sistema profissional de gestão de operação Cash on Delivery com controle de anúncios, vendas, relatórios e simulador de escala." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="styles/main.css" />
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.0/dist/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-bg-orbs">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+        </div>
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                        <rect width="36" height="36" rx="10" fill="url(#logoGrad)" />
+                        <path
+                            d="M10 18C10 13.58 13.58 10 18 10C20.21 10 22.21 10.89 23.66 12.34L21.54 14.46C20.63 13.55 19.38 13 18 13C15.24 13 13 15.24 13 18C13 20.76 15.24 23 18 23C20.21 23 22.08 21.72 22.87 19.87L25.65 21.13C24.32 24.1 21.39 26 18 26C13.58 26 10 22.42 10 18Z"
+                            fill="white" />
+                        <path d="M23 14H27V18H25V16H23V14Z" fill="#00E5A0" />
+                        <defs>
+                            <linearGradient id="logoGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#0A84FF" />
+                                <stop offset="1" stop-color="#00E5A0" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-name">COD Control Pro</span>
+                    <span class="logo-tagline">Gestão Inteligente de Operação COD</span>
+                </div>
+            </div>
+
+            <h2 class="login-title">Bem-vindo de volta</h2>
+            <p class="login-subtitle">Entre com sua senha para acessar sua central de comando</p>
+
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="login-password">Senha de acesso</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <input type="password" id="login-password" placeholder="Digite sua senha"
+                            autocomplete="current-password" />
+                        <button type="button" id="toggle-password" class="toggle-pwd-btn">
+                            <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <p id="login-error" class="login-error hidden">Senha incorreta. Tente novamente.</p>
+                <button type="submit" id="login-btn" class="btn btn-primary btn-full">
+                    <span>Entrar no sistema</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </form>
+
+            <p class="login-hint">Senha padrão: <strong>cod2024</strong></p>
+        </div>
+    </div>
+
+    <!-- ==================== APP SHELL ==================== -->
+    <div id="app" class="app hidden">
+
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+                        <rect width="36" height="36" rx="10" fill="url(#sideLogoGrad)" />
+                        <path
+                            d="M10 18C10 13.58 13.58 10 18 10C20.21 10 22.21 10.89 23.66 12.34L21.54 14.46C20.63 13.55 19.38 13 18 13C15.24 13 13 15.24 13 18C13 20.76 15.24 23 18 23C20.21 23 22.08 21.72 22.87 19.87L25.65 21.13C24.32 24.1 21.39 26 18 26C13.58 26 10 22.42 10 18Z"
+                            fill="white" />
+                        <path d="M23 14H27V18H25V16H23V14Z" fill="#00E5A0" />
+                        <defs>
+                            <linearGradient id="sideLogoGrad" x1="0" y1="0" x2="36" y2="36">
+                                <stop stop-color="#0A84FF" />
+                                <stop offset="1" stop-color="#00E5A0" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <span class="sidebar-brand">COD Control</span>
+                </div>
+                <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="ads">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                    </svg>
+                    <span>Controle de Anúncios</span>
+                </button>
+                <button class="nav-item" data-tab="sales">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 01-8 0" />
+                    </svg>
+                    <span>Controle de Vendas</span>
+                </button>
+                <button class="nav-item" data-tab="reports">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                    <span>Relatórios</span>
+                </button>
+                <button class="nav-item" data-tab="simulator">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                    <span>Simulador de Escala</span>
+                </button>
+                <button class="nav-item" data-tab="settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                    </svg>
+                    <span>Configurações</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    <span>Sair</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP BAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button id="mobile-menu-btn" class="mobile-menu-btn">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 id="page-title" class="page-title">Dashboard</h1>
+                        <p id="page-subtitle" class="page-subtitle">Visão geral da operação COD</p>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <div class="month-selector-wrap">
+                        <label for="global-month">Período:</label>
+                        <input type="month" id="global-month" class="month-input" />
+                    </div>
+                    <div class="topbar-meta">
+                        <span id="topbar-date" class="topbar-date"></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+
+                <!-- ===== DASHBOARD TAB ===== -->
+                <section id="tab-dashboard" class="tab-section active">
+                    <!-- META PROGRESS -->
+                    <div class="meta-banner">
+                        <div class="meta-info">
+                            <div class="meta-label">🎯 Meta Mensal de Lucro Líquido</div>
+                            <div class="meta-values">
+                                <span id="meta-current" class="meta-current">R$ 0,00</span>
+                                <span class="meta-sep">de</span>
+                                <span id="meta-goal-display" class="meta-goal">R$ 100.000,00</span>
+                            </div>
+                        </div>
+                        <div class="meta-progress-wrap">
+                            <div class="meta-progress-bar">
+                                <div id="meta-progress-fill" class="meta-progress-fill" style="width:0%"></div>
+                            </div>
+                            <div class="meta-progress-stats">
+                                <span id="meta-pct" class="meta-pct">0%</span>
+                                <span id="meta-projection" class="meta-projection">Projeção: calculando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KPI CARDS -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card" data-color="blue">
+                            <div class="kpi-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23" />
+                                    <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Faturamento Bruto</span><span id="kpi-gross"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="green">
+                            <div class="kpi-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Faturamento Líquido</span><span id="kpi-net"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="red">
+                            <div class="kpi-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Gasto em Anúncios</span><span id="kpi-ads"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="emerald">
+                            <div class="kpi-icon emerald"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polygon
+                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Lucro Líquido Real</span><span id="kpi-profit"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="cyan">
+                            <div class="kpi-icon cyan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path d="M18 20V10" />
+                                    <path d="M12 20V4" />
+                                    <path d="M6 20v-6" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">ROAS</span><span id="kpi-roas"
+                                    class="kpi-value">0.00x</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="orange">
+                            <div class="kpi-icon orange"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Custo por Venda</span><span id="kpi-cpv"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="purple">
+                            <div class="kpi-icon purple"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path
+                                        d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Ticket Médio</span><span id="kpi-ticket"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="blue">
+                            <div class="kpi-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                                    <line x1="3" y1="6" x2="21" y2="6" />
+                                    <path d="M16 10a4 4 0 01-8 0" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Total de Pedidos</span><span id="kpi-orders"
+                                    class="kpi-value">0</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="green">
+                            <div class="kpi-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Pedidos Entregues</span><span
+                                    id="kpi-delivered" class="kpi-value">0</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="red">
+                            <div class="kpi-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Cancelamentos</span><span id="kpi-cancelled"
+                                    class="kpi-value">0</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="orange">
+                            <div class="kpi-icon orange"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <line x1="19" y1="5" x2="5" y2="19" />
+                                    <circle cx="6.5" cy="6.5" r="2.5" />
+                                    <circle cx="17.5" cy="17.5" r="2.5" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Taxa de Cancelamento</span><span
+                                    id="kpi-cancel-rate" class="kpi-value">0%</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="purple">
+                            <div class="kpi-icon purple"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Margem de Lucro</span><span id="kpi-margin"
+                                    class="kpi-value">0%</span></div>
+                        </div>
+                    </div>
+
+                    <!-- CHARTS GRID -->
+                    <div class="charts-grid">
+                        <div class="chart-card chart-wide">
+                            <div class="chart-header">
+                                <h3>Faturamento por Dia</h3>
+                                <span class="chart-badge blue">Mensal</span>
+                            </div>
+                            <canvas id="chart-revenue"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Gastos com Anúncios por Dia</h3>
+                                <span class="chart-badge red">Diário</span>
+                            </div>
+                            <canvas id="chart-ads"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Lucro por Dia</h3>
+                                <span class="chart-badge green">Diário</span>
+                            </div>
+                            <canvas id="chart-profit"></canvas>
+                        </div>
+                        <div class="chart-card chart-wide">
+                            <div class="chart-header">
+                                <h3>Receita x Anúncios</h3>
+                                <span class="chart-badge cyan">Comparativo</span>
+                            </div>
+                            <canvas id="chart-comparison"></canvas>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Status dos Pedidos</h3>
+                                <span class="chart-badge orange">Distribuição</span>
+                            </div>
+                            <canvas id="chart-status"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== ADS TAB ===== -->
+                <section id="tab-ads" class="tab-section">
+                    <div class="section-header">
+                        <h2>📢 Controle de Anúncios</h2>
+                        <button class="btn btn-primary" id="btn-add-ad">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Lançar Anúncio
+                        </button>
+                    </div>
+
+                    <!-- Ad Summary Cards -->
+                    <div class="kpi-grid small">
+                        <div class="kpi-card" data-color="red">
+                            <div class="kpi-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Total Investido (Mês)</span><span
+                                    id="ads-total-month" class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="blue">
+                            <div class="kpi-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                                    <line x1="8" y1="21" x2="16" y2="21" />
+                                    <line x1="12" y1="17" x2="12" y2="21" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Facebook Ads</span><span id="ads-facebook"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="orange">
+                            <div class="kpi-icon orange"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="2" y1="12" x2="22" y2="12" />
+                                    <path
+                                        d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Google Ads</span><span id="ads-google"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="red">
+                            <div class="kpi-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polygon points="23 7 16 12 23 17 23 7" />
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">YouTube Ads</span><span id="ads-youtube"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="purple">
+                            <div class="kpi-icon purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Média Diária</span><span id="ads-daily-avg"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Ads Table -->
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <input type="text" id="ads-search" class="table-search"
+                                placeholder="Buscar por campanha, plataforma..." />
+                            <button class="btn btn-outline btn-sm" id="btn-export-ads-excel">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                Excel
+                            </button>
+                        </div>
+                        <div class="table-scroll">
+                            <table id="ads-table" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Plataforma</th>
+                                        <th>Campanha</th>
+                                        <th>Valor</th>
+                                        <th>Observações</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ads-tbody">
+                                    <tr class="empty-row">
+                                        <td colspan="6">Nenhum anúncio lançado ainda. Clique em "Lançar Anúncio" para
+                                            começar.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== SALES TAB ===== -->
+                <section id="tab-sales" class="tab-section">
+                    <div class="section-header">
+                        <h2>📦 Controle de Vendas</h2>
+                        <button class="btn btn-primary" id="btn-add-sale">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Registrar Venda
+                        </button>
+                    </div>
+
+                    <!-- Sales Summary -->
+                    <div class="kpi-grid small">
+                        <div class="kpi-card" data-color="blue">
+                            <div class="kpi-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23" />
+                                    <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Receita Bruta</span><span id="sales-gross"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="green">
+                            <div class="kpi-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                    <polyline points="17 6 23 6 23 12" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Receita Líquida</span><span id="sales-net"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="cyan">
+                            <div class="kpi-icon cyan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path
+                                        d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Total Comissões</span><span
+                                    id="sales-commission" class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="emerald">
+                            <div class="kpi-icon emerald"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <polygon
+                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Lucro Total</span><span id="sales-profit"
+                                    class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                        <div class="kpi-card" data-color="red">
+                            <div class="kpi-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg></div>
+                            <div class="kpi-data"><span class="kpi-label">Total Cancelado</span><span
+                                    id="sales-cancelled" class="kpi-value">R$ 0,00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Table -->
+                    <div class="table-card">
+                        <div class="table-toolbar">
+                            <input type="text" id="sales-search" class="table-search"
+                                placeholder="Buscar por produto, status..." />
+                            <select id="sales-filter-status" class="table-select">
+                                <option value="">Todos os status</option>
+                                <option value="Entregue">Entregue</option>
+                                <option value="Cancelado">Cancelado</option>
+                                <option value="Separado">Separado</option>
+                                <option value="Agendado">Agendado</option>
+                            </select>
+                            <button class="btn btn-outline btn-sm" id="btn-export-sales-excel">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                Excel
+                            </button>
+                        </div>
+                        <div class="table-scroll">
+                            <table id="sales-table" class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Produto</th>
+                                        <th>Bruto</th>
+                                        <th>Comissão</th>
+                                        <th>Status</th>
+                                        <th>Custo</th>
+                                        <th>Frete</th>
+                                        <th>Taxa</th>
+                                        <th>Lucro</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sales-tbody">
+                                    <tr class="empty-row">
+                                        <td colspan="10">Nenhuma venda registrada. Clique em "Registrar Venda" para
+                                            começar.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== REPORTS TAB ===== -->
+                <section id="tab-reports" class="tab-section">
+                    <div class="section-header">
+                        <h2>📊 Relatórios Avançados</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-outline" id="btn-export-pdf">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                    <polyline points="10 9 9 9 8 9" />
+                                </svg>
+                                Exportar PDF
+                            </button>
+                            <button class="btn btn-outline" id="btn-export-excel">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                Exportar Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="filter-card">
+                        <div class="filter-grid">
+                            <div class="filter-group">
+                                <label>Data Início</label>
+                                <input type="date" id="report-date-from" class="form-input" />
+                            </div>
+                            <div class="filter-group">
+                                <label>Data Fim</label>
+                                <input type="date" id="report-date-to" class="form-input" />
+                            </div>
+                            <div class="filter-group">
+                                <label>Plataforma</label>
+                                <select id="report-platform" class="form-input">
+                                    <option value="">Todas</option>
+                                    <option value="Facebook Ads">Facebook Ads</option>
+                                    <option value="Google Ads">Google Ads</option>
+                                    <option value="YouTube Ads">YouTube Ads</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Status</label>
+                                <select id="report-status" class="form-input">
+                                    <option value="">Todos</option>
+                                    <option value="Entregue">Entregue</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                    <option value="Separado">Separado</option>
+                                    <option value="Agendado">Agendado</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Produto</label>
+                                <input type="text" id="report-product" class="form-input"
+                                    placeholder="Nome do produto..." />
+                            </div>
+                            <div class="filter-group filter-actions">
+                                <button class="btn btn-primary" id="btn-apply-report">Aplicar Filtros</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Report Summary -->
+                    <div class="report-summary-grid" id="report-summary">
+                        <!-- dynamically populated -->
+                    </div>
+
+                    <!-- Report By Product -->
+                    <div class="table-card">
+                        <h3 class="table-title">Relatório por Produto</h3>
+                        <div class="table-scroll">
+                            <table class="data-table" id="report-product-table">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Qtd. Pedidos</th>
+                                        <th>Entregues</th>
+                                        <th>Cancelados</th>
+                                        <th>Receita Bruta</th>
+                                        <th>Lucro</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-product-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Report By Campaign -->
+                    <div class="table-card">
+                        <h3 class="table-title">Relatório por Campanha</h3>
+                        <div class="table-scroll">
+                            <table class="data-table" id="report-campaign-table">
+                                <thead>
+                                    <tr>
+                                        <th>Campanha</th>
+                                        <th>Plataforma</th>
+                                        <th>Investido</th>
+                                        <th>ROAS (estimado)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-campaign-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== SIMULATOR TAB ===== -->
+                <section id="tab-simulator" class="tab-section">
+                    <div class="section-header">
+                        <h2>🔥 Simulador de Escala</h2>
+                    </div>
+
+                    <div class="simulator-layout">
+                        <div class="simulator-inputs card">
+                            <h3 class="card-title">Parâmetros de Simulação</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Investimento Diário (R$)</label>
+                                    <input type="number" id="sim-investment" class="form-input" placeholder="0,00"
+                                        min="0" step="0.01" value="500" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Taxa de Conversão (%)</label>
+                                    <input type="number" id="sim-conversion" class="form-input" placeholder="0" min="0"
+                                        max="100" step="0.1" value="2" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Ticket Médio (R$)</label>
+                                    <input type="number" id="sim-ticket" class="form-input" placeholder="0,00" min="0"
+                                        step="0.01" value="150" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Custo do Produto (R$)</label>
+                                    <input type="number" id="sim-cost" class="form-input" placeholder="0,00" min="0"
+                                        step="0.01" value="30" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Taxa da Plataforma (%)</label>
+                                    <input type="number" id="sim-platform-fee" class="form-input" placeholder="0"
+                                        min="0" max="100" step="0.1" value="5" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Taxa de Cancelamento (%)</label>
+                                    <input type="number" id="sim-cancel-rate" class="form-input" placeholder="0" min="0"
+                                        max="100" step="0.1" value="15" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Frete Médio (R$)</label>
+                                    <input type="number" id="sim-shipping" class="form-input" placeholder="0,00" min="0"
+                                        step="0.01" value="15" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Meta de Lucro (R$)</label>
+                                    <input type="number" id="sim-goal" class="form-input" placeholder="100000" min="0"
+                                        step="1000" value="100000" />
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" id="btn-simulate" style="width:100%;margin-top:1rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                                </svg>
+                                Simular Agora
+                            </button>
+                        </div>
+
+                        <div class="simulator-results card" id="sim-results">
+                            <h3 class="card-title">Projeção de Resultados</h3>
+                            <div class="sim-kpi-grid">
+                                <div class="sim-kpi">
+                                    <span class="sim-kpi-label">Cliques/dia estimados</span>
+                                    <span id="sim-clicks" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi">
+                                    <span class="sim-kpi-label">Vendas/dia estimadas</span>
+                                    <span id="sim-sales-day" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi">
+                                    <span class="sim-kpi-label">Receita bruta/dia</span>
+                                    <span id="sim-revenue-day" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi">
+                                    <span class="sim-kpi-label">Lucro/dia</span>
+                                    <span id="sim-profit-day" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi highlight">
+                                    <span class="sim-kpi-label">Receita bruta/mês</span>
+                                    <span id="sim-revenue-month" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi highlight green">
+                                    <span class="sim-kpi-label">Lucro/mês</span>
+                                    <span id="sim-profit-month" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi highlight blue">
+                                    <span class="sim-kpi-label">ROAS projetado</span>
+                                    <span id="sim-roas" class="sim-kpi-value">—</span>
+                                </div>
+                                <div class="sim-kpi highlight orange">
+                                    <span class="sim-kpi-label">Dias para bater a meta</span>
+                                    <span id="sim-days-goal" class="sim-kpi-value">—</span>
+                                </div>
+                            </div>
+
+                            <div class="sim-goal-bar-wrap">
+                                <div class="sim-goal-label">
+                                    <span>Progresso projetado (mensal)</span>
+                                    <span id="sim-goal-pct">0%</span>
+                                </div>
+                                <div class="meta-progress-bar">
+                                    <div id="sim-goal-fill" class="meta-progress-fill" style="width:0%"></div>
+                                </div>
+                            </div>
+
+                            <canvas id="chart-simulator" style="margin-top:1.5rem;max-height:220px;"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== SETTINGS TAB ===== -->
+                <section id="tab-settings" class="tab-section">
+                    <div class="section-header">
+                        <h2>⚙️ Configurações</h2>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="card">
+                            <h3 class="card-title">🎯 Meta Mensal</h3>
+                            <div class="form-group">
+                                <label>Meta de Lucro Líquido (R$)</label>
+                                <input type="number" id="settings-goal" class="form-input" placeholder="100000" />
+                            </div>
+                            <button class="btn btn-primary" id="btn-save-goal">Salvar Meta</button>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="card-title">🔐 Alterar Senha</h3>
+                            <div class="form-group">
+                                <label>Senha Atual</label>
+                                <input type="password" id="settings-old-pwd" class="form-input"
+                                    placeholder="Senha atual" />
+                            </div>
+                            <div class="form-group">
+                                <label>Nova Senha</label>
+                                <input type="password" id="settings-new-pwd" class="form-input"
+                                    placeholder="Nova senha" />
+                            </div>
+                            <div class="form-group">
+                                <label>Confirmar Nova Senha</label>
+                                <input type="password" id="settings-confirm-pwd" class="form-input"
+                                    placeholder="Confirme a nova senha" />
+                            </div>
+                            <button class="btn btn-primary" id="btn-change-pwd">Alterar Senha</button>
+                            <p id="settings-pwd-msg" class="settings-msg hidden"></p>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="card-title">💾 Dados do Sistema</h3>
+                            <p class="settings-text">Faça backup manual dos seus dados ou importe dados anteriores.</p>
+                            <div class="btn-group" style="flex-direction:column;gap:.75rem;">
+                                <button class="btn btn-outline" id="btn-export-backup">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    Exportar Backup (JSON)
+                                </button>
+                                <button class="btn btn-outline" id="btn-import-backup">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                    Importar Backup (JSON)
+                                </button>
+                                <input type="file" id="backup-file-input" accept=".json" style="display:none;" />
+                            </div>
+                        </div>
+
+                        <div class="card danger-zone">
+                            <h3 class="card-title danger">⚠️ Zona de Perigo</h3>
+                            <p class="settings-text">Estas ações são irreversíveis. Tenha cuidado.</p>
+                            <button class="btn btn-danger" id="btn-clear-data">Apagar Todos os Dados</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div><!-- /page-content -->
+        </main>
+    </div><!-- /app -->
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Ad Modal -->
+    <div id="modal-ad" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-ad-title">Lançar Anúncio</h3>
+                <button class="modal-close" data-modal="modal-ad">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <form id="ad-form">
+                <input type="hidden" id="ad-edit-id" />
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="ad-date" class="form-input" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Plataforma *</label>
+                        <select id="ad-platform" class="form-input" required>
+                            <option value="">Selecione...</option>
+                            <option value="Facebook Ads">Facebook Ads</option>
+                            <option value="Google Ads">Google Ads</option>
+                            <option value="YouTube Ads">YouTube Ads</option>
+                            <option value="TikTok Ads">TikTok Ads</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Investido (R$) *</label>
+                        <input type="number" id="ad-value" class="form-input" placeholder="0,00" min="0" step="0.01"
+                            required />
+                    </div>
+                    <div class="form-group">
+                        <label>Nome da Campanha</label>
+                        <input type="text" id="ad-campaign" class="form-input" placeholder="Nome da campanha..." />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="ad-obs" class="form-input" rows="3" placeholder="Observações opcionais..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-modal="modal-ad">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sale Modal -->
+    <div id="modal-sale" class="modal-overlay hidden">
+        <div class="modal-card modal-large">
+            <div class="modal-header">
+                <h3 id="modal-sale-title">Registrar Venda</h3>
+                <button class="modal-close" data-modal="modal-sale">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <form id="sale-form">
+                <input type="hidden" id="sale-edit-id" />
+                <div class="form-grid form-grid-3">
+                    <div class="form-group">
+                        <label>Data da Venda *</label>
+                        <input type="date" id="sale-date" class="form-input" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Produto *</label>
+                        <input type="text" id="sale-product" class="form-input" placeholder="Nome do produto"
+                            required />
+                    </div>
+                    <div class="form-group">
+                        <label>Status *</label>
+                        <select id="sale-status" class="form-input" required>
+                            <option value="Entregue">✅ Entregue</option>
+                            <option value="Cancelado">❌ Cancelado</option>
+                            <option value="Separado">📦 Separado</option>
+                            <option value="Agendado">📅 Agendado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Bruto (R$) *</label>
+                        <input type="number" id="sale-gross" class="form-input" placeholder="0,00" min="0" step="0.01"
+                            required />
+                    </div>
+                    <div class="form-group">
+                        <label>Comissão Recebida (R$)</label>
+                        <input type="number" id="sale-commission" class="form-input" placeholder="0,00" min="0"
+                            step="0.01" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Custo do Produto (R$)</label>
+                        <input type="number" id="sale-cost" class="form-input" placeholder="0,00" min="0" step="0.01"
+                            value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Frete (R$)</label>
+                        <input type="number" id="sale-shipping" class="form-input" placeholder="0,00" min="0"
+                            step="0.01" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa da Plataforma (R$)</label>
+                        <input type="number" id="sale-fee" class="form-input" placeholder="0,00" min="0" step="0.01"
+                            value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Lucro Calculado</label>
+                        <input type="text" id="sale-profit-preview" class="form-input" readonly
+                            placeholder="Automático" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="sale-obs" class="form-input" rows="2"
+                        placeholder="Observações opcionais..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-modal="modal-sale">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Venda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="modal-confirm" class="modal-overlay hidden">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h3 id="confirm-title">Confirmar ação</h3>
+            </div>
+            <p id="confirm-message" class="confirm-msg"></p>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="confirm-cancel">Cancelar</button>
+                <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-msg"></span>
+    </div>
+
+    <!-- Global loading overlay -->
+    <div id="global-loader" class="global-loader hidden">
+        <div class="loader-spinner"></div>
+    </div>
+
+    <script src="scripts/supabase-config.js"></script>
+    <script src="scripts/db.js"></script>
+    <script src="scripts/charts.js"></script>
+    <script src="scripts/export.js"></script>
+    <script src="scripts/app.js"></script>
+</body>
+
+</html>
