@@ -46,9 +46,10 @@ function calcSaleProfit(sale) {
     const cost = Number(sale.cost) || 0;
     const shipping = Number(sale.shipping) || 0;
     const fee = Number(sale.fee) || 0;
-    // Lucro Líquido = Valor Bruto − Custo do Produto − Frete − Taxa
+    const commission = Number(sale.commission) || 0;
+    // Lucro Líquido = Bruto − Comissão − Custo − Frete − Taxa
     if (sale.status === 'Cancelado') return -cost;
-    return gross - cost - shipping - fee;
+    return gross - commission - cost - shipping - fee;
 }
 
 function statusBadge(status) {
@@ -185,9 +186,10 @@ async function refreshDashboard() {
         const grossRev = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.gross || 0), 0);
         const totalFees = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.fee || 0), 0);
         const totalShipping = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.shipping || 0), 0);
+        const totalCommission = sales.filter(s => s.status !== 'Cancelado').reduce((s, x) => s + Number(x.commission || 0), 0);
         const totalCost = sales.reduce((s, x) => s + Number(x.cost || 0), 0);
-        const netRev = grossRev - totalFees - totalShipping;
-        // Lucro Líquido = Bruto − Custo − Frete − Taxa − Anúncios
+        const netRev = grossRev - totalFees - totalShipping - totalCommission;
+        // Lucro Líquido = Bruto − Comissão − Custo − Frete − Taxa − Anúncios
         const profit = netRev - totalCost - totalAds;
         const roas = totalAds > 0 ? (grossRev / totalAds) : 0;
         const cpv = deliveredSales.length > 0 ? (totalAds / deliveredSales.length) : 0;
@@ -390,12 +392,14 @@ async function refreshSalesModule() {
         const nonCancelled = sales.filter(s => s.status !== 'Cancelado');
 
         const grossTotal = nonCancelled.reduce((s, x) => s + Number(x.gross || 0), 0);
+        const totalComissao = nonCancelled.reduce((s, x) => s + Number(x.commission || 0), 0);
         const totalCustos = nonCancelled.reduce((s, x) =>
             s + Number(x.cost || 0) + Number(x.shipping || 0) + Number(x.fee || 0), 0);
         const lucroTotal = sales.reduce((s, x) => s + (calcSaleProfit(x) || 0), 0);
 
         el('sales-gross').textContent = fmt(grossTotal);
         el('sales-net').textContent = fmt(totalCustos);
+        el('sales-commission').textContent = fmt(totalComissao);
         el('sales-profit').textContent = fmt(lucroTotal);
         el('sales-profit').style.color = lucroTotal >= 0 ? 'var(--green)' : 'var(--red)';
         el('sales-cancelled').textContent = fmt(cancelled.reduce((s, x) => s + Number(x.gross || 0), 0));
@@ -412,17 +416,17 @@ function renderSalesTable(sales, search = '', statusFilter = '') {
     const sorted = [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     if (sorted.length === 0) {
-        tbody.innerHTML = `<tr class="empty-row"><td colspan="9">Nenhuma venda encontrada. Clique em "Registrar Venda" para começar.</td></tr>`;
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="10">Nenhuma venda encontrada. Clique em "Registrar Venda" para começar.</td></tr>`;
         return;
     }
     tbody.innerHTML = sorted.map(s => {
         const profit = calcSaleProfit(s);
-        const profitColor = profit >= 0 ? 'var(--green)' : 'var(--red)';
         return `
     <tr>
       <td>${s.date}</td>
       <td>${s.product}</td>
       <td>${fmt(s.gross)}</td>
+      <td>${fmt(s.commission || 0)}</td>
       <td>${statusBadge(s.status)}</td>
       <td>${fmt(s.cost || 0)}</td>
       <td>${fmt(s.shipping || 0)}</td>
@@ -450,7 +454,7 @@ function initSalesModule() {
         openModal('modal-sale');
     });
 
-    ['sale-gross', 'sale-cost', 'sale-shipping', 'sale-fee', 'sale-status'].forEach(id => {
+    ['sale-gross', 'sale-commission', 'sale-cost', 'sale-shipping', 'sale-fee', 'sale-status'].forEach(id => {
         el(id)?.addEventListener('input', updateSaleProfitPreview);
         el(id)?.addEventListener('change', updateSaleProfitPreview);
     });
@@ -464,7 +468,7 @@ function initSalesModule() {
             product: el('sale-product').value.trim(),
             status: el('sale-status').value,
             gross: parseFloat(el('sale-gross').value) || 0,
-            commission: 0,
+            commission: parseFloat(el('sale-commission').value) || 0,
             cost: parseFloat(el('sale-cost').value) || 0,
             shipping: parseFloat(el('sale-shipping').value) || 0,
             fee: parseFloat(el('sale-fee').value) || 0,
@@ -531,6 +535,7 @@ window.editSale = async (id) => {
     el('sale-product').value = s.product;
     el('sale-status').value = s.status;
     el('sale-gross').value = s.gross;
+    el('sale-commission').value = s.commission || 0;
     el('sale-cost').value = s.cost || 0;
     el('sale-shipping').value = s.shipping || 0;
     el('sale-fee').value = s.fee || 0;
