@@ -63,6 +63,13 @@ function platformBadge(p) {
     return `<span class="badge ${map[p] || 'badge-blue'}">${p}</span>`;
 }
 
+// Melhoria 2: Indicador visual de lucro
+function profitBadge(profit) {
+    if (profit > 50) return `<span class="profit-badge profit-green" title="Lucro positivo">✦</span>`;
+    if (profit >= 0) return `<span class="profit-badge profit-yellow" title="Lucro baixo">▲</span>`;
+    return `<span class="profit-badge profit-red" title="Prejuízo">▼</span>`;
+}
+
 async function withLoading(fn, loadingMsg = '') {
     showLoading(true);
     try { return await fn(); }
@@ -172,8 +179,33 @@ async function refreshDashboard() {
             DB.settings.get(),
         ]);
 
-        const ads = DB.filterByMonth(allAds, globalMonth);
-        const sales = DB.filterByMonth(allSales, globalMonth);
+        // Melhoria 6: filtro por período rápido
+        let ads, sales;
+        const activePeriod = window._dashPeriod || 'month';
+        if (activePeriod === 'today') {
+            const t = today();
+            ads = allAds.filter(a => a.date === t);
+            sales = allSales.filter(s => s.date === t);
+        } else if (activePeriod === '7d') {
+            const d = new Date(); d.setDate(d.getDate() - 6);
+            const from = d.toISOString().slice(0, 10);
+            ads = allAds.filter(a => a.date >= from);
+            sales = allSales.filter(s => s.date >= from);
+        } else if (activePeriod === '30d') {
+            const d = new Date(); d.setDate(d.getDate() - 29);
+            const from = d.toISOString().slice(0, 10);
+            ads = allAds.filter(a => a.date >= from);
+            sales = allSales.filter(s => s.date >= from);
+        } else if (activePeriod === 'thismonth') {
+            const now2 = new Date();
+            const ym = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}`;
+            ads = DB.filterByMonth(allAds, ym);
+            sales = DB.filterByMonth(allSales, ym);
+        } else {
+            ads = DB.filterByMonth(allAds, globalMonth);
+            sales = DB.filterByMonth(allSales, globalMonth);
+        }
+
         const goal = Number(settings.goal) || 100000;
 
         // KPIs
@@ -197,7 +229,10 @@ async function refreshDashboard() {
         const cancelRate = sales.length > 0 ? (cancelledSales.length / sales.length * 100) : 0;
         const margin = grossRev > 0 ? (profit / grossRev * 100) : 0;
 
-        // Update cards
+        // Melhoria 3: CPA automático
+        const cpa = deliveredSales.length > 0 ? (totalAds / deliveredSales.length) : 0;
+
+        // Update cards existentes
         el('kpi-gross').textContent = fmt(grossRev);
         el('kpi-net').textContent = fmt(netRev);
         el('kpi-ads').textContent = fmt(totalAds);
@@ -211,6 +246,35 @@ async function refreshDashboard() {
         el('kpi-cancelled').textContent = cancelledSales.length;
         el('kpi-cancel-rate').textContent = `${fmtN(cancelRate, 1)}%`;
         el('kpi-margin').textContent = `${fmtN(margin, 1)}%`;
+
+        // Melhoria 3: CPA card
+        if (el('kpi-cpa')) el('kpi-cpa').textContent = fmt(cpa);
+        // Melhoria 4: Ticket médio card (já existe kpi-ticket, mas adicionamos novo se houver)
+        if (el('kpi-ticket-medio')) el('kpi-ticket-medio').textContent = fmt(ticket);
+        // Melhoria 5: taxa de cancelamento
+        if (el('kpi-cancel-pct')) {
+            el('kpi-cancel-pct').textContent = `${fmtN(cancelRate, 1)}%`;
+            el('kpi-cancel-pct').style.color = cancelRate > 20 ? 'var(--red)' : cancelRate > 10 ? 'var(--orange)' : 'var(--green)';
+        }
+
+        // Melhoria 8: Indicador de Saúde da Operação
+        const healthEl = el('dash-health-status');
+        if (healthEl) {
+            let healthLabel, healthClass, healthIcon;
+            if (profit > 0 && cancelRate <= 10) {
+                healthLabel = 'SAUDÁVEL'; healthClass = 'health-green'; healthIcon = '💚';
+            } else if (profit >= 0 && cancelRate <= 20) {
+                healthLabel = 'ATENÇÃO'; healthClass = 'health-yellow'; healthIcon = '⚠️';
+            } else {
+                healthLabel = 'RISCO'; healthClass = 'health-red'; healthIcon = '🔴';
+            }
+            healthEl.textContent = `${healthIcon} ${healthLabel}`;
+            healthEl.className = `health-badge ${healthClass}`;
+        }
+        if (el('health-detail')) {
+            el('health-detail').textContent =
+                `Lucro: ${fmt(profit)} | Cancelamentos: ${fmtN(cancelRate, 1)}%`;
+        }
 
         // Meta
         const pct = Math.min((profit / goal) * 100, 100);
@@ -412,7 +476,17 @@ function renderSalesTable(sales, search = '', statusFilter = '') {
     const tbody = el('sales-tbody');
     let filtered = sales;
     if (statusFilter) filtered = filtered.filter(s => s.status === statusFilter);
-    if (search) filtered = filtered.filter(s => (s.product || '').toLowerCase().includes(search.toLowerCase()) || (s.status || '').toLowerCase().includes(search.toLowerCase()));
+    // Melhoria 7: busca por produto, cliente/obs e telefone
+    if (search) {
+        const q = search.toLowerCase();
+        filtered = filtered.filter(s =>
+            (s.product || '').toLowerCase().includes(q) ||
+            (s.obs || '').toLowerCase().includes(q) ||
+            (s.customer || '').toLowerCase().includes(q) ||
+            (s.phone || '').toLowerCase().includes(q) ||
+            (s.status || '').toLowerCase().includes(q)
+        );
+    }
     const sorted = [...filtered].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     if (sorted.length === 0) {
@@ -421,6 +495,8 @@ function renderSalesTable(sales, search = '', statusFilter = '') {
     }
     tbody.innerHTML = sorted.map(s => {
         const profit = calcSaleProfit(s);
+        // Melhoria 1 + 2: lucro com badge visual
+        const badge = profitBadge(profit);
         return `
     <tr>
       <td>${s.date}</td>
@@ -431,7 +507,7 @@ function renderSalesTable(sales, search = '', statusFilter = '') {
       <td>${fmt(s.cost || 0)}</td>
       <td>${fmt(s.shipping || 0)}</td>
       <td>${fmt(s.fee || 0)}</td>
-      <td class="${profit >= 0 ? 'text-green' : 'text-red'}"><strong>${fmt(profit)}</strong></td>
+      <td class="${profit >= 0 ? 'text-green' : 'text-red'}"><strong>${fmt(profit)}</strong> ${badge}</td>
       <td>
         <button class="action-btn edit" onclick="editSale('${s.id}')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -486,6 +562,10 @@ function initSalesModule() {
     el('sales-search').addEventListener('input', async () => refreshSalesModule());
     el('sales-filter-status').addEventListener('change', async () => refreshSalesModule());
 
+    // Melhoria 7: atualiza placeholder para deixar claro o que busca
+    const searchInput = el('sales-search');
+    if (searchInput) searchInput.placeholder = 'Buscar por produto, cliente, telefone...';
+
     el('btn-export-sales-excel').addEventListener('click', async () => {
         const sales = DB.filterByMonth(await DB.sales.getAll(), globalMonth);
         Exporter.exportSales(sales);
@@ -495,14 +575,15 @@ function initSalesModule() {
 
 function updateSaleProfitPreview() {
     const gross = parseFloat(el('sale-gross').value) || 0;
+    const commission = parseFloat(el('sale-commission').value) || 0;
     const cost = parseFloat(el('sale-cost').value) || 0;
     const shipping = parseFloat(el('sale-shipping').value) || 0;
     const fee = parseFloat(el('sale-fee').value) || 0;
     const status = el('sale-status').value;
 
-    const data = { gross, cost, shipping, fee, status };
+    const data = { gross, commission, cost, shipping, fee, status };
     const profit = calcSaleProfit(data);
-    const totalCosts = cost + shipping + fee;
+    const totalCosts = commission + cost + shipping + fee;
 
     el('sale-profit-preview').value = fmt(profit);
     el('sale-profit-preview').style.color = profit >= 0 ? 'var(--green)' : 'var(--red)';
@@ -518,7 +599,7 @@ function updateSaleProfitPreview() {
                 `${fmt(gross)} − ${fmt(totalCosts)} = ` +
                 `<strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--red)'}">` +
                 `${fmt(profit)}</strong> ` +
-                `<span style="opacity:.7">(custo ${fmt(cost)} + frete ${fmt(shipping)} + taxa ${fmt(fee)})</span>`;
+                `<span style="opacity:.7">(comissão ${fmt(commission)} + custo ${fmt(cost)} + frete ${fmt(shipping)} + taxa ${fmt(fee)})</span>`;
             breakdown.style.color = 'var(--text-muted)';
         }
     }
@@ -783,6 +864,19 @@ function initSettings() {
 /* =========================================
    INIT
    ========================================= */
+// Melhoria 6: Filtros rápidos de período no dashboard
+function initPeriodFilters() {
+    const filters = document.querySelectorAll('.period-filter-btn');
+    filters.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            filters.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            window._dashPeriod = btn.dataset.period;
+            await refreshDashboard();
+        });
+    });
+}
+
 async function initApp() {
     initMonthSelector();
     initClock();
@@ -792,6 +886,7 @@ async function initApp() {
     initReports();
     initSimulator();
     initSettings();
+    initPeriodFilters();
     await refreshDashboard();
 }
 
