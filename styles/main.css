@@ -635,24 +635,50 @@ body {
   display: flex;
   align-items: center;
   gap: .5rem;
-  font-size: .8rem;
-  color: var(--text-muted);
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(10, 132, 255, .08);
+  border: 1px solid rgba(10, 132, 255, .2);
+  border-radius: var(--radius-sm);
+  padding: .3rem .7rem .3rem .55rem;
+  transition: all var(--trans);
+}
+
+.month-selector-wrap:hover {
+  border-color: rgba(10, 132, 255, .5);
+  background: rgba(10, 132, 255, .14);
+  color: var(--blue);
+}
+
+.month-selector-wrap label {
+  cursor: default;
+  white-space: nowrap;
+  color: inherit;
+  font-weight: 600;
+  letter-spacing: .02em;
 }
 
 .month-input {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: .8rem;
-  padding: .35rem .625rem;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 0;
   cursor: pointer;
+  min-width: 110px;
 }
 
 .month-input:focus {
   outline: none;
+}
+
+.month-selector-wrap:focus-within {
   border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, .15);
 }
 
 .topbar-date {
@@ -1937,10 +1963,12 @@ form {
   .period-filter-bar {
     gap: .35rem;
   }
+
   .period-filter-btn {
     font-size: .72rem;
     padding: .25rem .55rem;
   }
+
   .health-card {
     flex-direction: column;
     align-items: flex-start;

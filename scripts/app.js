@@ -156,6 +156,11 @@ function initMonthSelector() {
     globalMonth = ym;
     input.addEventListener('change', async () => {
         globalMonth = input.value;
+        // Ativa automaticamente o filtro "Pelo Seletor" ao trocar o mês
+        window._dashPeriod = 'month';
+        document.querySelectorAll('.period-filter-btn').forEach(b => b.classList.remove('active'));
+        const monthBtn = document.querySelector('.period-filter-btn[data-period="month"]');
+        if (monthBtn) monthBtn.classList.add('active');
         await navigate(currentTab);
     });
 }
